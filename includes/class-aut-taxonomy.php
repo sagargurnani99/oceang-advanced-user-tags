@@ -35,6 +35,9 @@ class AUT_Taxonomy {
         
         // Filter users by taxonomy in admin
         add_action( 'pre_get_users', array( $this, 'filter_users_by_taxonomy' ) );
+        
+        // Handle the user filtering directly
+        add_action( 'admin_init', array( $this, 'handle_user_filter' ) );
     }
 
     /**
@@ -163,8 +166,21 @@ class AUT_Taxonomy {
         }
         
         // Check if we're filtering by the user tag
-        if ( isset( $_GET[$this->taxonomy] ) && ! empty( $_GET[$this->taxonomy] ) ) {
+        if ( isset( $_GET[$this->taxonomy] ) ) {
             $term_id = intval( $_GET[$this->taxonomy] );
+            
+            // If term_id is 0 or empty, don't apply any filtering (show all users)
+            if ( empty( $term_id ) ) {
+                // Just return without modifying the query to show all users
+                return;
+            }
+            
+            // Get the term to make sure it exists
+            $term = get_term( $term_id, $this->taxonomy );
+            if ( is_wp_error( $term ) || empty( $term ) ) {
+                $query->set( 'include', array( 0 ) ); // No valid term, return no results
+                return;
+            }
             
             // Get all users with this term
             $user_ids = $this->get_users_by_term_id( $term_id );
@@ -173,6 +189,7 @@ class AUT_Taxonomy {
                 $user_ids = array( 0 ); // No users found, return no results
             }
             
+            // Apply the filter to the query
             $query->set( 'include', $user_ids );
         }
     }
@@ -194,18 +211,49 @@ class AUT_Taxonomy {
             "SELECT user_id FROM {$wpdb->usermeta} 
             WHERE meta_key = %s 
             AND (
-                meta_value = %s 
-                OR meta_value LIKE %s 
-                OR meta_value LIKE %s 
+                meta_value LIKE %s
+                OR meta_value LIKE %s
+                OR meta_value LIKE %s
                 OR meta_value LIKE %s
             )",
             $meta_key,
-            serialize( array( $term_id ) ),
-            $wpdb->esc_like( serialize( array( $term_id ) ) ) . '%',
-            '%' . $wpdb->esc_like( serialize( array( $term_id ) ) ),
-            '%' . $wpdb->esc_like( 'i:' . $term_id . ';' ) . '%'
+            '%' . $wpdb->esc_like( 's:' . strlen( $term_id ) . ':"' . $term_id . '"' ) . '%',
+            '%' . $wpdb->esc_like( 'i:' . $term_id . ';' ) . '%',
+            '%' . $wpdb->esc_like( 's:' . strlen( (string) $term_id ) . ':"' . $term_id . '"' ) . '%',
+            '%' . $wpdb->esc_like( '"term_id";i:' . $term_id . ';' ) . '%'
         );
         
         return $wpdb->get_col( $sql );
+    }
+
+    /**
+     * Handle the user filter directly
+     */
+    public function handle_user_filter() {
+        global $pagenow;
+        
+        // Only on the users.php page
+        if ( 'users.php' !== $pagenow ) {
+            return;
+        }
+        
+        // Check if our taxonomy filter is being used and the Change button was clicked
+        if ( isset( $_GET[$this->taxonomy] ) && ! empty( $_GET[$this->taxonomy] ) && isset( $_GET['changeit'] ) ) {
+            // Get the current URL parameters
+            $params = $_GET;
+            
+            // Add the filter_action parameter
+            $params['filter_action'] = 'Filter';
+            
+            // Remove the changeit parameter as it's not needed
+            unset( $params['changeit'] );
+            
+            // Build the redirect URL
+            $redirect_url = admin_url( 'users.php?' . http_build_query( $params ) );
+            
+            // Perform the redirect
+            wp_redirect( $redirect_url );
+            exit;
+        }
     }
 }

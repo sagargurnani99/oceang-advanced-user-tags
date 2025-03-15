@@ -38,6 +38,9 @@ class AUT_Admin {
         
         // Enqueue admin scripts and styles
         add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
+        
+        // Modify the users page form to ensure our filter works
+        add_action( 'in_admin_footer', array( $this, 'fix_users_filter_form' ) );
     }
 
     /**
@@ -150,42 +153,90 @@ class AUT_Admin {
 
     /**
      * Enqueue admin scripts and styles
-     *
-     * @param string $hook Current admin page.
      */
-    public function enqueue_admin_assets( $hook ) {
-        // Only enqueue on relevant pages
-        if ( ! in_array( $hook, array( 'user-edit.php', 'profile.php', 'users.php', 'edit-tags.php' ) ) ) {
+    public function enqueue_admin_assets() {
+        global $pagenow;
+        
+        // Only enqueue on the users.php admin page
+        if ( 'users.php' === $pagenow ) {
+            wp_enqueue_script(
+                'aut-admin-js',
+                plugins_url( 'assets/js/admin.js', dirname( __FILE__ ) ),
+                array( 'jquery' ),
+                AUT_VERSION,
+                true
+            );
+            
+            // Add data for the script
+            wp_localize_script(
+                'aut-admin-js',
+                'autData',
+                array(
+                    'taxonomy' => $this->taxonomy,
+                )
+            );
+        }
+    }
+
+    /**
+     * Fix the users filter form to work with our custom taxonomy
+     */
+    public function fix_users_filter_form() {
+        global $pagenow;
+        
+        // Only on the users.php page
+        if ( 'users.php' !== $pagenow ) {
             return;
         }
         
-        // Check if we're on the User Tags taxonomy page
-        $taxonomy = isset( $_GET['taxonomy'] ) ? sanitize_text_field( $_GET['taxonomy'] ) : '';
-        if ( 'edit-tags.php' === $hook && $this->taxonomy !== $taxonomy ) {
-            return;
-        }
-        
-        // Register and enqueue Select2
-        wp_register_style( 'select2', AUT_PLUGIN_URL . 'assets/css/select2.min.css', array(), '4.0.13' );
-        wp_register_script( 'select2', AUT_PLUGIN_URL . 'assets/js/select2.min.js', array( 'jquery' ), '4.0.13', true );
-        
-        // Plugin custom styles and scripts
-        wp_register_style( 'aut-admin', AUT_PLUGIN_URL . 'assets/css/admin.css', array( 'select2' ), AUT_VERSION );
-        wp_register_script( 'aut-admin', AUT_PLUGIN_URL . 'assets/js/admin.js', array( 'jquery', 'select2' ), AUT_VERSION, true );
-        
-        // Localize script
-        wp_localize_script( 'aut-admin', 'autData', array(
-            'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
-            'nonce'     => wp_create_nonce( 'aut_ajax_nonce' ),
-            'taxonomy'  => $this->taxonomy,
-            'searching' => __( 'Searching...', 'advanced-user-taxonomies' ),
-            'noResults' => __( 'No results found', 'advanced-user-taxonomies' ),
-        ) );
-        
-        // Enqueue all assets
-        wp_enqueue_style( 'select2' );
-        wp_enqueue_style( 'aut-admin' );
-        wp_enqueue_script( 'select2' );
-        wp_enqueue_script( 'aut-admin' );
+        // Add a small script to fix the form submission
+        ?>
+        <script type="text/javascript">
+        jQuery(document).ready(function($) {
+            // Fix both top and bottom Change buttons
+            function setupChangeButtonHandler() {
+                // When any Change button is clicked
+                $('input[name="changeit"], input[name="changeit2"]').off('click').on('click', function(e) {
+                    // Get the current button
+                    var $button = $(this);
+                    var isBottom = $button.attr('name') === 'changeit2';
+                    
+                    // Find the corresponding select element based on its ID
+                    var selectId = isBottom ? '<?php echo esc_js( $this->taxonomy ); ?>2' : '<?php echo esc_js( $this->taxonomy ); ?>';
+                    var $select = $('#' + selectId);
+                    
+                    // Only proceed if our taxonomy dropdown exists
+                    if ($select.length) {
+                        // Prevent the default form submission
+                        e.preventDefault();
+                        
+                        // Build the URL manually
+                        var baseUrl = window.location.href.split('?')[0];
+                        var params = new URLSearchParams(window.location.search);
+                        
+                        // Set our taxonomy value (or remove it if empty)
+                        if ($select.val()) {
+                            params.set('<?php echo esc_js( $this->taxonomy ); ?>', $select.val());
+                        } else {
+                            params.delete('<?php echo esc_js( $this->taxonomy ); ?>');
+                        }
+                        
+                        // Add the filter_action parameter
+                        params.set('filter_action', 'Filter');
+                        
+                        // Redirect to the filtered URL
+                        window.location.href = baseUrl + '?' + params.toString();
+                    }
+                });
+            }
+            
+            // Initial setup
+            setupChangeButtonHandler();
+            
+            // Also set up the handler again after a short delay to ensure it works with any dynamically loaded elements
+            setTimeout(setupChangeButtonHandler, 500);
+        });
+        </script>
+        <?php
     }
 }

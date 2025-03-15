@@ -16,7 +16,7 @@
          */
         init: function() {
             this.initSelect2();
-            // Removed initFilterDropdown as we're using standard WordPress dropdowns now
+            this.fixUserTagsFilter();
         },
 
         /**
@@ -74,6 +74,32 @@
                     },
                     searching: function() {
                         return autData.searching;
+                    }
+                }
+            });
+        },
+        
+        /**
+         * Fix the User Tags filter functionality
+         */
+        fixUserTagsFilter: function() {
+            // When the Change button is clicked, ensure the form submits correctly
+            $('.tablenav .actions input[type="submit"]').on('click', function(e) {
+                // Get the taxonomy name from the script data
+                var taxonomyName = autData.taxonomy;
+                
+                // Find the corresponding select element
+                var $select = $('select[name="' + taxonomyName + '"]');
+                
+                // If the select exists and has a value
+                if ($select.length && $select.val()) {
+                    // Add a hidden field for filter_action if it doesn't exist
+                    if (!$('input[name="filter_action"]').length) {
+                        $('<input>').attr({
+                            type: 'hidden',
+                            name: 'filter_action',
+                            value: 'Filter'
+                        }).appendTo($select.closest('form'));
                     }
                 }
             });
