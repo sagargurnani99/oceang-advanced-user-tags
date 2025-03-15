@@ -27,13 +27,9 @@ class AUT_Taxonomy {
      */
     public function __construct() {
         // Register the taxonomy
-        add_action( 'init', array( $this, 'register_taxonomy' ) );
+        add_action( 'init', array( $this, 'register' ) );
         
-        // Add user taxonomy term relationship management
-        add_action( 'personal_options_update', array( $this, 'save_user_taxonomy_terms' ) );
-        add_action( 'edit_user_profile_update', array( $this, 'save_user_taxonomy_terms' ) );
-        
-        // Filter users by taxonomy in admin
+        // Add filter for user queries
         add_action( 'pre_get_users', array( $this, 'filter_users_by_taxonomy' ) );
         
         // Handle the user filtering directly
@@ -43,7 +39,37 @@ class AUT_Taxonomy {
     /**
      * Register the User Tags taxonomy
      */
-    public function register_taxonomy() {
+    public function register() {
+        // Register the taxonomy
+        register_taxonomy(
+            $this->taxonomy,
+            null,
+            $this->get_taxonomy_args()
+        );
+
+        // Add hooks for user profile
+        add_action( 'personal_options_update', array( $this, 'save_user_taxonomy_terms' ) );
+        add_action( 'edit_user_profile_update', array( $this, 'save_user_taxonomy_terms' ) );
+        
+        // Add hook for new user creation
+        add_action( 'user_register', array( $this, 'save_user_taxonomy_terms_new_user' ) );
+        
+        // Add capabilities to admin role
+        $admin_role = get_role( 'administrator' );
+        if ( $admin_role ) {
+            $admin_role->add_cap( 'manage_user_tags' );
+            $admin_role->add_cap( 'edit_user_tags' );
+            $admin_role->add_cap( 'delete_user_tags' );
+            $admin_role->add_cap( 'assign_user_tags' );
+        }
+    }
+
+    /**
+     * Get taxonomy arguments
+     *
+     * @return array
+     */
+    private function get_taxonomy_args() {
         $labels = array(
             'name'                       => _x( 'User Tags', 'taxonomy general name', 'advanced-user-taxonomies' ),
             'singular_name'              => _x( 'User Tag', 'taxonomy singular name', 'advanced-user-taxonomies' ),
@@ -87,16 +113,7 @@ class AUT_Taxonomy {
             'show_in_rest'      => true,
         );
 
-        register_taxonomy( $this->taxonomy, null, $args );
-
-        // Add capabilities to administrator role
-        $admin_role = get_role( 'administrator' );
-        if ( $admin_role ) {
-            $admin_role->add_cap( 'manage_user_tags' );
-            $admin_role->add_cap( 'edit_user_tags' );
-            $admin_role->add_cap( 'delete_user_tags' );
-            $admin_role->add_cap( 'assign_user_tags' );
-        }
+        return $args;
     }
 
     /**
@@ -149,6 +166,19 @@ class AUT_Taxonomy {
         } else {
             // If no terms were selected, delete the meta
             delete_user_meta( $user_id, $this->taxonomy . '_terms' );
+        }
+    }
+
+    /**
+     * Save user taxonomy terms for a newly created user
+     *
+     * @param int $user_id User ID.
+     */
+    public function save_user_taxonomy_terms_new_user( $user_id ) {
+        // Save user tags if present in POST data
+        if ( isset( $_POST[$this->taxonomy] ) && is_array( $_POST[$this->taxonomy] ) ) {
+            $term_ids = array_map( 'intval', (array) $_POST[$this->taxonomy] );
+            update_user_meta( $user_id, $this->taxonomy . '_terms', $term_ids );
         }
     }
 

@@ -53,16 +53,8 @@ final class Advanced_User_Taxonomies {
      * Private constructor to prevent direct instantiation
      */
     private function __construct() {
-        $this->define_constants();
         $this->includes();
         $this->init_hooks();
-    }
-
-    /**
-     * Define plugin constants
-     */
-    private function define_constants() {
-        // Additional constants can be defined here if needed
     }
 
     /**
