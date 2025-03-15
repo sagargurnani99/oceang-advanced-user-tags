@@ -1,0 +1,78 @@
+/**
+ * Advanced User Taxonomies Admin Styles
+ *
+ * @package AdvancedUserTaxonomies
+ */
+
+/* Select2 Customizations */
+.select2-container--default .select2-selection--multiple {
+    border-color: #8c8f94;
+    border-radius: 3px;
+}
+
+.select2-container--default.select2-container--focus .select2-selection--multiple {
+    border-color: #2271b1;
+    box-shadow: 0 0 0 1px #2271b1;
+    outline: 2px solid transparent;
+}
+
+.select2-container--default .select2-selection--multiple .select2-selection__choice {
+    background-color: #f0f0f1;
+    border-color: #c3c4c7;
+    color: #3c434a;
+    padding: 2px 6px;
+    margin-top: 4px;
+    margin-bottom: 0;
+}
+
+.select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
+    color: #2271b1;
+    margin-right: 5px;
+}
+
+.select2-container--default .select2-selection--multiple .select2-selection__choice__remove:hover {
+    color: #d63638;
+}
+
+.select2-dropdown {
+    border-color: #8c8f94;
+    z-index: 100000;
+}
+
+.select2-container--default .select2-results__option--highlighted[aria-selected] {
+    background-color: #2271b1;
+}
+
+/* User Tags Filter Dropdown */
+.aut-select2-filter {
+    min-width: 200px;
+    max-width: 300px;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+/* Fix for admin pages */
+.taxonomy-user_tag #col-container {
+    position: relative;
+}
+
+.taxonomy-user_tag #col-left {
+    position: relative;
+    width: 35%;
+    float: left;
+}
+
+.taxonomy-user_tag #col-right {
+    position: relative;
+    width: 65%;
+    float: right;
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 782px) {
+    .taxonomy-user_tag #col-left,
+    .taxonomy-user_tag #col-right {
+        float: none;
+        width: 100%;
+    }
+}
