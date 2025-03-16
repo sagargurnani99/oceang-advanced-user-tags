@@ -1,6 +1,6 @@
 # Advanced User Taxonomies
 
-A plugin that allows custom tags to be assigned to users.
+A WordPress plugin that allows custom tags to be assigned to users.
 
 ## Description
 
