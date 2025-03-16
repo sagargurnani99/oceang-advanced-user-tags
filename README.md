@@ -1,6 +1,6 @@
 # Advanced User Taxonomies
 
-A professional WordPress plugin that extends WordPress by allowing custom taxonomies to be assigned to users.
+A plugin that allows custom tags to be assigned to users.
 
 ## Description
 
